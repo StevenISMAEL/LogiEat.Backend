@@ -1,0 +1,6 @@
+@LogiEat.Backend_HostAddress = http://localhost:5177
+
+GET {{LogiEat.Backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

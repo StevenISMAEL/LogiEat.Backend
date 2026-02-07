@@ -1,0 +1,41 @@
+﻿@page
+@model LogiEat.Backend.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "Iniciar Sesión";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4>LogiEat Admin</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <div class="mb-3">
+                            <label class="form-label">Correo Electrónico</label>
+                            <input asp-for="Input.Email" class="form-control" placeholder="admin@logieat.com" />
+                            <span asp-validation-for="Input.Email" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Contraseña</label>
+                            <input asp-for="Input.Password" type="password" class="form-control" />
+                            <span asp-validation-for="Input.Password" class="text-danger"></span>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Entrar</button>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                        {
+                            <div class="alert alert-danger mt-3">
+                                @Model.ErrorMessage
+                            </div>
+                        }
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
