@@ -11,15 +11,64 @@
         <nav class="navbar navbar-expand-sm navbar-dark bg-dark mb-3">
             <div class="container">
                 <a class="navbar-brand" asp-page="/Admin/Index">LogiEat Admin</a>
-                @if (User.Identity.IsAuthenticated)
-                {
-                    <div class="navbar-nav ms-auto">
-                        <span class="navbar-text me-3">Hola, @User.Identity.Name</span>
-                        <form class="d-inline" asp-page="/Account/Logout" method="post">
-                            <button type="submit" class="btn btn-outline-light btn-sm">Salir</button>
-                        </form>
-                    </div>
-                }
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="navbarNav">
+
+                    <ul class="navbar-nav me-auto">
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-page="/Admin/Index">Pedidos</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-page="/Admin/Productos/Index">Productos</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-info" asp-page="/Admin/Bitacora/Index">👁️ Auditoría</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-white fw-bold" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
+                                    🛠️Administración
+                                </a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" asp-page="/Admin/Usuarios/Index">👥 Gestión de Usuarios</a></li>
+                                    <li><a class="dropdown-item" asp-page="/Admin/Usuarios/RegisterUser">➕ Nuevo Empleado</a></li>
+                                </ul>
+                            </li>
+                        }
+
+                        @if (User.Identity.IsAuthenticated)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-warning" asp-page="/Cliente/Catalogo">🛒 Comprar</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-page="/Cliente/MisPedidos">📄 Mis Pedidos</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-page="/Cliente/MisFacturas">📄 Facturas</a>
+                            </li>
+                        }
+                    </ul>
+
+                    @if (User.Identity.IsAuthenticated)
+                    {
+                        <ul class="navbar-nav ms-auto">
+                            <li class="nav-item">
+                                <span class="navbar-text me-3">Hola, @User.Identity.Name</span>
+                            </li>
+                            <li class="nav-item">
+                                <form class="d-inline" asp-page="/Account/Logout" method="post">
+                                    <button type="submit" class="btn btn-outline-light btn-sm mt-1">Salir</button>
+                                </form>
+                            </li>
+                        </ul>
+                    }
+                </div>
             </div>
         </nav>
     </header>

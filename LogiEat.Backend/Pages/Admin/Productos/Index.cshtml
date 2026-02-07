@@ -1,0 +1,85 @@
+﻿@page
+@model LogiEat.Backend.Pages.Admin.Productos.IndexModel
+@{
+    ViewData["Title"] = "Inventario";
+}
+
+@* 1. ALERTA DE ERRORES (Se muestra solo si hay mensaje) *@
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+        <strong>⚠️ Atención:</strong> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">📦 Inventario de Productos</h1>
+    <a asp-page="./Crear" class="btn btn-primary shadow-sm">
+        ➕ Nuevo Producto
+    </a>
+</div>
+
+<div class="card shadow border-0 mb-4">
+    <div class="card-header py-3 bg-white">
+        <h6 class="m-0 font-weight-bold text-primary">Listado General</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Nombre</th>
+                        <th>Categoría</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th class="text-end pe-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Productos)
+                    {
+                        <tr>
+                            <td class="ps-4 fw-bold text-dark">@item.NombreProducto</td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    @(item.Categoria?.Nombre ?? "Sin Cat.")
+                                </span>
+                            </td>
+                            <td class="text-success fw-bold">$@item.Precio</td>
+                            <td>
+                                @if (item.Cantidad < 5)
+                                {
+                                    <span class="badge bg-danger">Critico: @item.Cantidad</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">@item.Cantidad</span>
+                                }
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group">
+                                    <a asp-page="./Editar" asp-route-id="@item.IdProducto" class="btn btn-sm btn-outline-primary">
+                                        ✏️
+                                    </a>
+                                    @* Ahora es un simple enlace a la nueva página *@
+                                    <a asp-page="./Delete" asp-route-id="@item.IdProducto" class="btn btn-sm btn-outline-danger ms-1">
+                                        🗑️
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.Productos.Count == 0)
+        {
+            <div class="text-center p-5">
+                <h4 class="text-muted">📭 El inventario está vacío</h4>
+                <p class="text-muted">Agrega tu primer producto para comenzar a vender.</p>
+            </div>
+        }
+    </div>
+</div>

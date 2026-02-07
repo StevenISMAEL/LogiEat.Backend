@@ -1,0 +1,56 @@
+﻿@page
+@model LogiEat.Backend.Pages.Admin.Productos.CrearModel
+@{
+    ViewData["Title"] = "Crear Producto";
+}
+
+<div class="container" style="max-width: 600px;">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Nuevo Producto</h4>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="mb-3">
+                    <label class="form-label">Nombre del Producto</label>
+                    <input asp-for="Input.Nombre" class="form-control" placeholder="Ej: Pizza Hawaiana" />
+                    <span asp-validation-for="Input.Nombre" class="text-danger"></span>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Precio ($)</label>
+                        <input asp-for="Input.Precio" class="form-control" type="number" step="0.01" />
+                        <span asp-validation-for="Input.Precio" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Stock Inicial</label>
+                        <input asp-for="Input.StockInicial" class="form-control" type="number" />
+                        <span asp-validation-for="Input.StockInicial" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Categoría</label>
+                    <select asp-for="Input.IdCategoria" class="form-select" asp-items="Model.CategoriasList">
+                        <option value="">-- Selecciona una Categoría --</option>
+                    </select>
+                    <span asp-validation-for="Input.IdCategoria" class="text-danger"></span>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-success">Guardar Producto</button>
+                    <a asp-page="Index" class="btn btn-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

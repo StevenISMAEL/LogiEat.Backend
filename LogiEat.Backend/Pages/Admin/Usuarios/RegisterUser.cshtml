@@ -1,0 +1,31 @@
+﻿@page
+@model LogiEat.Backend.Pages.Admin.Usuarios.RegisterUserModel
+
+<div class="card shadow-sm col-md-6 mx-auto mt-5">
+    <div class="card-header bg-primary text-white">
+        <h4>Registrar Usuario Interno</h4>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            <div class="mb-3">
+                <label>Nombre Completo</label>
+                <input asp-for="Input.Nombre" class="form-control" />
+            </div>
+            <div class="mb-3">
+                <label>Correo Electrónico</label>
+                <input asp-for="Input.Email" class="form-control" />
+            </div>
+            <div class="mb-3">
+                <label>Contraseña Temporal</label>
+                <input asp-for="Input.Password" type="password" class="form-control" />
+            </div>
+            <div class="mb-3">
+                <label>Asignar Rol</label>
+                <select asp-for="Input.Rol" asp-items="Model.RolesLista" class="form-select">
+                    <option value="">-- Seleccionar Rol --</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success w-100">Crear Usuario</button>
+        </form>
+    </div>
+</div>

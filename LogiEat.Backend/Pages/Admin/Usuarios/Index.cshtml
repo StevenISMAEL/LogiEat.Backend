@@ -1,0 +1,62 @@
+﻿@page
+@model LogiEat.Backend.Pages.Admin.Usuarios.IndexModel
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between mb-4">
+        <h2>Gestión de Personal</h2>
+        <a asp-page="./RegisterUser" class="btn btn-primary">➕ Nuevo Usuario</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <table class="table table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Rol</th>
+                    <th class="text-center">Activo</th> @* Columna Sí/No *@
+                    <th class="text-center">Estado (Switch)</th> @* El Interruptor *@
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Model.UsuariosLista)
+                {
+                    <tr class="@(user.Activo ? "" : "table-light text-muted")">
+                        <td>@user.NombreCompleto</td>
+                        <td>@user.Email</td>
+                        <td><span class="badge bg-secondary">@user.Rol</span></td>
+
+                        @* 1. Columna de Texto Sí/No *@
+                        <td class="text-center">
+                            @if (user.Activo)
+                            {
+                                <span class="text-success fw-bold">Sí</span>
+                            }
+                            else
+                            {
+                                <span class="text-danger fw-bold">No</span>
+                            }
+                        </td>
+
+                        @* 2. El Switch *@
+                        <td class="text-center">
+                            <form method="post" asp-page-handler="ToggleStatus" asp-route-id="@user.Id" id="form-@user.Id">
+                                <div class="form-check form-switch d-inline-block">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           @(user.Activo ? "checked" : "")
+                                           onchange="document.getElementById('form-@user.Id').submit();"
+                                           style="cursor:pointer; transform: scale(1.2);">
+                                </div>
+                            </form>
+                        </td>
+
+                        <td class="text-end">
+                            <a asp-page="./Editar" asp-route-id="@user.Id" class="btn btn-sm btn-outline-primary">✏️</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

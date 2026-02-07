@@ -79,6 +79,12 @@ builder.Services.AddSwaggerGen(c => {
     });
 });
 
+// 1. Necesario para obtener la IP y el Usuario dentro de los servicios
+builder.Services.AddHttpContextAccessor();
+
+// 2. Registramos nuestro nuevo servicio
+builder.Services.AddScoped<LogiEat.Backend.Services.IAuditoriaService, LogiEat.Backend.Services.AuditoriaService>();
+
 var app = builder.Build();
 
 // --- PIPELINE ---

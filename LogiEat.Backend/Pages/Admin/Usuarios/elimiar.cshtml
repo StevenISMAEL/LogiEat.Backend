@@ -1,0 +1,37 @@
+﻿@page
+@model LogiEat.Backend.Pages.Admin.Usuarios.EliminarModel
+@{
+    ViewData["Title"] = "Confirmar Eliminación";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger shadow">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">⚠️ Confirmar Acción</h5>
+                </div>
+                <div class="card-body text-center">
+                    <i class="bi bi-exclamation-triangle-fill text-danger display-4 mb-3"></i>
+
+                    <h3>¿Eliminar este usuario?</h3>
+                    <p class="text-muted">Esta acción es irreversible y borrará sus permisos.</p>
+
+                    <div class="alert alert-light border">
+                        <strong>Usuario:</strong> @Model.UsuarioMostrar?.FullName <br />
+                        <strong>Email:</strong> @Model.UsuarioMostrar?.Email
+                    </div>
+
+                    <form method="post">
+                        <input type="hidden" asp-for="IdUsuarioABorrar" />
+
+                        <div class="d-flex justify-content-center gap-2">
+                            <a asp-page="./Index" class="btn btn-secondary">Cancelar</a>
+                            <button type="submit" class="btn btn-danger">Sí, Eliminar Definitivamente</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

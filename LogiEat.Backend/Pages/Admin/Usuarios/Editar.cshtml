@@ -1,0 +1,43 @@
+﻿@page "{id}"
+@model LogiEat.Backend.Pages.Admin.Usuarios.EditarModel
+@{
+    ViewData["Title"] = "Editar Usuario";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">✏️ Editar Usuario</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <input type="hidden" asp-for="Input.Id" />
+
+                        <div class="form-floating mb-3">
+                            <input asp-for="Input.NombreCompleto" class="form-control" />
+                            <label asp-for="Input.NombreCompleto">Nombre Completo</label>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input asp-for="Input.Email" class="form-control" />
+                            <label asp-for="Input.Email">Correo Electrónico</label>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <select asp-for="Input.RolSeleccionado" asp-items="Model.RolesDisponibles" class="form-select">
+                            </select>
+                            <label asp-for="Input.RolSeleccionado">Rol Asignado</label>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                            <a asp-page="./Index" class="btn btn-outline-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

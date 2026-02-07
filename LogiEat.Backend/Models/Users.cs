@@ -11,6 +11,7 @@ namespace LogiEat.Backend.Models
         // Agregamos lo que falte:
         [Column("Nombre")] // Tu SQL usa "Nombre", Identity usa "UserName". Mapeamos.
         public string FullName { get; set; }
+        public bool Activo { get; set; } = true;
     }
 
     // 2. ROL: Hereda de IdentityRole<int>

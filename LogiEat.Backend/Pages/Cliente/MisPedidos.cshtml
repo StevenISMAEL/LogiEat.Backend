@@ -1,0 +1,70 @@
+﻿@page
+@model LogiEat.Backend.Pages.Cliente.MisPedidosModel
+@{
+    ViewData["Title"] = "Mis Pedidos";
+}
+
+<div class="container py-4">
+    <h2 class="mb-4">📦 Historial de Pedidos</h2>
+
+    @if (Model.Pedidos.Count == 0)
+    {
+        <div class="alert alert-info text-center shadow-sm">
+            <h4>No has realizado ningún pedido aún.</h4>
+            <p>¿Tienes hambre? ¡Ve al catálogo!</p>
+            <a asp-page="./Catalogo" class="btn btn-primary mt-2">🍔 Ir a Comprar</a>
+        </div>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-md-2 g-4">
+            @foreach (var pedido in Model.Pedidos)
+            {
+                <div class="col">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-muted">#@pedido.IdPedido</span>
+                            <small class="text-muted">@pedido.FechaPedido.ToString("dd/MM/yyyy HH:mm")</small>
+                        </div>
+
+                        <div class="card-body">
+                            <div class="mb-3">
+                                @if (pedido.EstadoPedido?.Nombre == "PENDIENTE")
+                                {
+                                    <span class="badge bg-warning text-dark w-100 py-2">⏳ PENDIENTE</span>
+                                }
+                                else if (pedido.EstadoPedido?.Nombre == "ENTREGADO" || pedido.EstadoPedido?.Nombre == "COMPLETADO")
+                                {
+                                    <span class="badge bg-success w-100 py-2">✅ ENTREGADO</span>
+                                }
+                                else if (pedido.EstadoPedido?.Nombre == "CANCELADO")
+                                {
+                                    <span class="badge bg-danger w-100 py-2">❌ CANCELADO</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary w-100 py-2">@pedido.EstadoPedido?.Nombre</span>
+                                }
+                            </div>
+
+                            <ul class="list-group list-group-flush small">
+                                @foreach (var detalle in pedido.Detalles)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between px-0">
+                                        <span>@detalle.Cantidad x @detalle.NombreProductoSnapshot</span>
+                                        <span class="text-muted">$@detalle.Subtotal</span>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+
+                        <div class="card-footer bg-light d-flex justify-content-between align-items-center">
+                            <span class="fw-bold">TOTAL:</span>
+                            <span class="fs-5 text-success fw-bold">$@pedido.Total</span>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

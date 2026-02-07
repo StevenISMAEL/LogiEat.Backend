@@ -1,0 +1,32 @@
+﻿@page "{id:int}"
+@model LogiEat.Backend.Pages.Admin.Productos.DeleteModel
+@{
+    ViewData["Title"] = "Eliminar Producto";
+}
+
+<div class="container mt-5" style="max-width: 500px;">
+    <div class="card border-danger shadow">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0">⚠️ Confirmar Eliminación</h4>
+        </div>
+        <div class="card-body text-center">
+            <p class="fs-5">¿Estás seguro de que deseas eliminar permanentemente este producto?</p>
+            <hr />
+            <h3 class="text-dark">@Model.Producto.NombreProducto</h3>
+            <p class="text-muted">Precio: $@Model.Producto.Precio | Stock: @Model.Producto.Cantidad</p>
+
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-warning small">
+                    @TempData["ErrorMessage"]
+                </div>
+            }
+        </div>
+        <div class="card-footer bg-light d-grid gap-2">
+            <form method="post">
+                <button type="submit" class="btn btn-danger w-100 mb-2">Sí, Eliminar Definitivamente</button>
+                <a asp-page="./Index" class="btn btn-secondary w-100">No, Cancelar y Volver</a>
+            </form>
+        </div>
+    </div>
+</div>

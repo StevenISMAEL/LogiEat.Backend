@@ -1,0 +1,25 @@
+﻿@page
+@model LogiEat.Backend.Pages.Account.AccessDeniedModel
+@{
+    ViewData["Title"] = "Acceso Denegado";
+}
+
+<div class="container text-center mt-5">
+    <div class="card shadow border-danger" style="max-width: 500px; margin: 0 auto;">
+        <div class="card-header bg-danger text-white">
+            <h3 class="mb-0">⛔ Acceso Prohibido</h3>
+        </div>
+        <div class="card-body py-5">
+            <h1 style="font-size: 5rem;">👮‍♂️</h1>
+            <h4 class="card-title text-danger">No tienes permiso para estar aquí.</h4>
+            <p class="card-text text-muted">Esta zona es solo para administradores.</p>
+
+            <a asp-page="/Cliente/Catalogo" class="btn btn-outline-dark mt-3">
+                🛒 Ir a la Tienda
+            </a>
+            <a asp-page="/Account/Login" class="btn btn-link mt-3 d-block">
+                ← Volver al Login
+            </a>
+        </div>
+    </div>
+</div>

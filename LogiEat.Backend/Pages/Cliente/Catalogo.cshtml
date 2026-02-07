@@ -1,0 +1,325 @@
+﻿@page
+@model LogiEat.Backend.Pages.Cliente.CatalogoModel
+@{
+    ViewData["Title"] = "Realizar Pedido";
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        🎉 @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        ⚠️ @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <h2 class="mb-4">🍔 Menú Disponible</h2>
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+            @foreach (var item in Model.Productos)
+            {
+                <div class="col">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-header bg-transparent border-0 pt-3">
+                            <span class="badge bg-warning text-dark float-end">@item.Categoria?.Nombre</span>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">@item.NombreProducto</h5>
+                            <h3 class="text-primary fw-bold">$@item.Precio</h3>
+                            <p class="card-text text-muted small">
+                                Stock disponible: @item.Cantidad
+                            </p>
+                        </div>
+                        <div class="card-footer bg-white border-0 pb-3">
+                            <button class="btn btn-outline-primary w-100"
+                                    onclick="agregarAlCarrito(@item.IdProducto, '@item.NombreProducto', @item.Precio, @item.Cantidad)">
+                                🛒 Agregar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow sticky-top" style="top: 20px;">
+            <div class="card-header bg-dark text-white">
+                <h4 class="mb-0">🛒 Tu Pedido</h4>
+            </div>
+            <div class="card-body">
+                <ul id="lista-carrito" class="list-group list-group-flush mb-3">
+                    <li class="list-group-item text-center text-muted">El carrito está vacío</li>
+                </ul>
+
+                <div class="d-flex justify-content-between fw-bold fs-5">
+                    <span>Subtotal:</span>
+                    <span id="total-carrito">$0.00</span>
+                </div>
+                <small class="text-muted text-end d-block">* El IVA se calculará al pagar</small>
+            </div>
+            <div class="card-footer bg-white">
+                <button type="button" onclick="confirmarPedido()" class="btn btn-success w-100 py-2 fs-5" id="btn-pagar" disabled>
+                    ✅ Pagar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPago" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">💳 Finalizar Compra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="card bg-light border-0 mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Subtotal:</span>
+                            <span id="modal-subtotal" class="fw-bold">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1 text-muted">
+                            <span>IVA (15%):</span>
+                            <span id="modal-iva">$0.00</span>
+                        </div>
+                        <hr class="my-2" />
+                        <div class="d-flex justify-content-between fs-4 text-primary">
+                            <strong>TOTAL A PAGAR:</strong>
+                            <strong id="modal-total-final">$0.00</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" asp-page-handler="RealizarPedido" id="form-pago-final">
+                    <input type="hidden" name="cartJson" id="cartJsonModal" />
+
+                    <h6 class="fw-bold">📄 Datos de Factura</h6>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <input type="text" name="rucCliente" class="form-control form-control-sm" placeholder="RUC / Cédula" required />
+                        </div>
+                        <div class="col-6">
+                            <input type="text" name="nombreCliente" class="form-control form-control-sm" placeholder="Nombre / Razón Social" required />
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <h6 class="fw-bold">💳 Método de Pago</h6>
+                    <div class="btn-group w-100 mb-3" role="group">
+                        <input type="radio" class="btn-check" name="idTipoPago" id="pagoTarjeta" value="1" checked onclick="cambiarMetodo('tarjeta')">
+                        <label class="btn btn-outline-primary" for="pagoTarjeta">💳 Tarjeta</label>
+
+                        <input type="radio" class="btn-check" name="idTipoPago" id="pagoEfectivo" value="2" onclick="cambiarMetodo('efectivo')">
+                        <label class="btn btn-outline-success" for="pagoEfectivo">💵 Efectivo</label>
+
+                        <input type="radio" class="btn-check" name="idTipoPago" id="pagoTransferencia" value="3" onclick="cambiarMetodo('transferencia')">
+                        <label class="btn btn-outline-dark" for="pagoTransferencia">🏦 Transf.</label>
+                    </div>
+
+                    <div id="panel-tarjeta" class="metodo-panel">
+                        <div class="mb-3">
+                            <label class="small text-muted">Número de Tarjeta (Simulación)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">💳</span>
+                                <input type="text" class="form-control" placeholder="0000 0000 0000 0000" maxlength="16">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <input type="text" class="form-control" placeholder="MM/YY">
+                            </div>
+                            <div class="col-6">
+                                <input type="text" class="form-control" placeholder="CVV">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="panel-efectivo" class="metodo-panel d-none bg-light p-3 rounded">
+                        <p class="small mb-2">El repartidor cobrará al entregar.</p>
+                        <label class="form-label fw-bold">¿Con cuánto vas a pagar? (Para cambio)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" step="0.01" name="referencia" id="input-referencia-efectivo" class="form-control" placeholder="Ej: 20.00" />
+                        </div>
+                    </div>
+
+                    <div id="panel-transferencia" class="metodo-panel d-none">
+                        <div class="alert alert-secondary small p-2">
+                            <strong>Banco Pichincha:</strong> 2200112233<br />
+                            <strong>A nombre de:</strong> LogiEat S.A.<br />
+                            <strong>RUC:</strong> 1799999999001
+                        </div>
+                        <label class="form-label">Número de Comprobante</label>
+                        <input type="text" name="referencia" id="input-referencia-transf" class="form-control" placeholder="Ej: 123456" />
+                    </div>
+
+                    <hr />
+                    <button type="submit" class="btn btn-success w-100 py-2 fw-bold">
+                        ✅ Confirmar Pedido
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    @section Scripts {
+    <script>
+        // 1. INICIALIZACIÓN
+        // Intentamos leer del almacenamiento local al cargar la página
+        let carrito = JSON.parse(localStorage.getItem('logieat_carrito')) || [];
+        
+        // Renderizamos de inmediato por si había algo guardado
+        renderizarCarrito();
+
+        // 2. VERIFICAR SI DEBEMOS LIMPIAR (Viene del C#)
+        // Si el servidor dice que fue éxito, borramos la memoria
+        @if (TempData["LimpiarCarrito"] != null && (bool)TempData["LimpiarCarrito"] == true)
+        {
+            <text>
+            console.log("Compra exitosa: Limpiando carrito...");
+            carrito = [];
+            localStorage.removeItem('logieat_carrito');
+            renderizarCarrito();
+            </text>
+        }
+
+        // --- FUNCIONES DEL CARRITO ---
+
+        function guardarEnStorage() {
+            localStorage.setItem('logieat_carrito', JSON.stringify(carrito));
+        }
+
+        function agregarAlCarrito(id, nombre, precio, stockMax) {
+            if (stockMax <= 0) {
+                alert("¡Este producto está agotado!");
+                return;
+            }
+
+            const existe = carrito.find(item => item.Id === id);
+
+            if (existe) {
+                if(existe.Cantidad < stockMax) {
+                    existe.Cantidad++;
+                } else {
+                    alert("¡No hay más stock disponible!");
+                    return;
+                }
+            } else {
+                carrito.push({ Id: id, Nombre: nombre, Precio: precio, Cantidad: 1, StockMax: stockMax });
+            }
+            
+            guardarEnStorage(); // <--- GUARDAMOS CAMBIOS
+            renderizarCarrito();
+        }
+
+        function quitarDelCarrito(id) {
+            const item = carrito.find(item => item.Id === id);
+            if (item) {
+                item.Cantidad--;
+                if (item.Cantidad === 0) {
+                    carrito = carrito.filter(i => i.Id !== id);
+                }
+            }
+            guardarEnStorage(); // <--- GUARDAMOS CAMBIOS
+            renderizarCarrito();
+        }
+
+        function renderizarCarrito() {
+            const lista = document.getElementById('lista-carrito');
+            const totalSpan = document.getElementById('total-carrito');
+            const btnPagar = document.getElementById('btn-pagar');
+
+            lista.innerHTML = '';
+            let total = 0;
+
+            if (carrito.length === 0) {
+                lista.innerHTML = '<li class="list-group-item text-center text-muted">El carrito está vacío</li>';
+                btnPagar.disabled = true;
+            } else {
+                btnPagar.disabled = false;
+                carrito.forEach(item => {
+                    total += item.Precio * item.Cantidad;
+                    lista.innerHTML += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="my-0">${item.Nombre}</h6>
+                                <small class="text-muted">$${item.Precio} x ${item.Cantidad}</small>
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-danger" onclick="quitarDelCarrito(${item.Id})">-</button>
+                                <button class="btn btn-outline-success" onclick="agregarAlCarrito(${item.Id}, '${item.Nombre}', ${item.Precio}, ${item.StockMax})">+</button>
+                            </div>
+                        </li>
+                    `;
+                });
+            }
+            totalSpan.innerText = '$' + total.toFixed(2);
+        }
+
+        // --- LÓGICA DEL MODAL ---
+
+        function confirmarPedido() {
+            let textoSubtotal = document.getElementById('total-carrito').innerText.replace('$', '').trim();
+            let subtotal = parseFloat(textoSubtotal);
+            let iva = subtotal * 0.15;
+            let totalFinal = subtotal + iva;
+
+            document.getElementById('modal-subtotal').innerText = '$' + subtotal.toFixed(2);
+            document.getElementById('modal-iva').innerText = '$' + iva.toFixed(2);
+            document.getElementById('modal-total-final').innerText = '$' + totalFinal.toFixed(2);
+            document.getElementById('cartJsonModal').value = JSON.stringify(carrito);
+
+            var myModal = new bootstrap.Modal(document.getElementById('modalPago'));
+            myModal.show();
+        }
+
+        function cambiarMetodo(metodo) {
+            document.getElementById('panel-tarjeta').classList.add('d-none');
+            document.getElementById('panel-efectivo').classList.add('d-none');
+            document.getElementById('panel-transferencia').classList.add('d-none');
+            document.getElementById('input-referencia-efectivo').value = '';
+            document.getElementById('input-referencia-transf').value = '';
+            document.getElementById('panel-' + metodo).classList.remove('d-none');
+        }
+
+        // --- VALIDACIÓN ---
+        document.getElementById('form-pago-final').addEventListener('submit', function(e) {
+            const metodoSeleccionado = document.querySelector('input[name="idTipoPago"]:checked').value;
+
+            if (metodoSeleccionado === "2") { // EFECTIVO
+                const textoTotal = document.getElementById('modal-total-final').innerText.replace('$', '').trim();
+                const totalApagar = parseFloat(textoTotal);
+                const inputEfectivo = document.getElementById('input-referencia-efectivo');
+                const montoIngresado = parseFloat(inputEfectivo.value);
+
+                if (isNaN(montoIngresado) || montoIngresado < totalApagar) {
+                    e.preventDefault(); 
+                    e.stopPropagation();
+                    alert(`❌ Monto insuficiente.\nDebes pagar al menos $${totalApagar.toFixed(2)}`);
+                    inputEfectivo.classList.add('is-invalid');
+                    inputEfectivo.focus();
+                    return false;
+                } else {
+                    inputEfectivo.classList.remove('is-invalid');
+                    inputEfectivo.classList.add('is-valid');
+                }
+            }
+        });
+    </script>
+
+}

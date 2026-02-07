@@ -1,6 +1,7 @@
 ﻿using LogiEat.Backend.Data;
 using LogiEat.Backend.DTOs;
 using LogiEat.Backend.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,7 @@ namespace LogiEat.Backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class ProductosController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -64,7 +65,7 @@ namespace LogiEat.Backend.Controllers
         // ==========================================
         // 🔒 ZONA ADMIN
         // ==========================================
-        [HttpPost]
+        [HttpPost("Crear")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Producto>> CrearProducto([FromBody] ProductoCrearDto dto)
         {
