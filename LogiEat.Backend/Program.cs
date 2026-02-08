@@ -85,6 +85,8 @@ builder.Services.AddHttpContextAccessor();
 
 // 2. Registramos nuestro nuevo servicio
 builder.Services.AddScoped<LogiEat.Backend.Services.IAuditoriaService, LogiEat.Backend.Services.AuditoriaService>();
+//XUNIT
+builder.Services.AddScoped<IFacturacionService, FacturacionService>();
 
 var app = builder.Build();
 
@@ -123,7 +125,5 @@ using (var scope = app.Services.CreateScope())
 }
 
 
-//XUNIT
-builder.Services.AddScoped<IFacturacionService, FacturacionService>();
 
 app.Run();
