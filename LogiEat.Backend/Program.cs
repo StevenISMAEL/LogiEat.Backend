@@ -1,5 +1,6 @@
 using LogiEat.Backend.Data;
 using LogiEat.Backend.Models;
+using LogiEat.Backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -120,5 +121,9 @@ using (var scope = app.Services.CreateScope())
         logger.LogError(ex, "Error en el Seeder.");
     }
 }
+
+
+//XUNIT
+builder.Services.AddScoped<IFacturacionService, FacturacionService>();
 
 app.Run();
