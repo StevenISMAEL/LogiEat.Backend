@@ -1,0 +1,49 @@
+﻿@page
+@model LogiEat.Backend.Pages.Account.RegisterModel
+@{
+    ViewData["Title"] = "Registrarse";
+}
+
+<div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="card shadow-lg p-4" style="width: 400px;">
+        <div class="text-center mb-4">
+            <h3 class="fw-bold text-primary">Crear Cuenta</h3>
+            <p class="text-muted">Únete a LogiEat</p>
+        </div>
+
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            @* 1. NOMBRE *@
+            <div class="form-floating mb-3">
+                <input asp-for="Input.Name" class="form-control" placeholder="Tu Nombre" />
+                <label asp-for="Input.Name">Nombre Completo</label>
+                <span asp-validation-for="Input.Name" class="text-danger"></span>
+            </div>
+
+            @* 2. EMAIL *@
+            <div class="form-floating mb-3">
+                <input asp-for="Input.Email" class="form-control" placeholder="name@example.com" />
+                <label asp-for="Input.Email">Correo Electrónico</label>
+                <span asp-validation-for="Input.Email" class="text-danger"></span>
+            </div>
+
+            @* 3. PASSWORD *@
+            <div class="form-floating mb-4">
+                <input asp-for="Input.Password" type="password" class="form-control" placeholder="Contraseña" />
+                <label asp-for="Input.Password">Contraseña</label>
+                <span asp-validation-for="Input.Password" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Registrarse</button>
+        </form>
+
+        <div class="text-center mt-3">
+            <small>¿Ya tienes cuenta? <a asp-page="./Login" class="text-decoration-none">Inicia sesión aquí</a></small>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
