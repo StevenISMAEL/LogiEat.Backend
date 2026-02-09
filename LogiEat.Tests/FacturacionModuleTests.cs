@@ -1,307 +1,191 @@
 ﻿using Xunit;
 using FluentAssertions;
-using LogiEat.Backend.Services;
+using Moq;
 using LogiEat.Backend.Models;
+using LogiEat.Backend.Services.Facturacion;
+using LogiEat.Backend.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics; // <--- IMPRESCINDIBLE
+using LogiEat.Backend.Services;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace LogiEat.Tests
 {
     public class FacturacionModuleTests
     {
+        private readonly Mock<IAuditoriaService> _auditMock;
+        private readonly AppDbContext _context;
         private readonly FacturacionService _service;
 
         public FacturacionModuleTests()
         {
-            _service = new FacturacionService();
+            // --- AQUÍ ESTÁ LA SOLUCIÓN DEFINITIVA ---
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()) // BD única por test
+
+                // ESTA LÍNEA OBLIGA A IGNORAR EL ERROR DE TRANSACCIÓN
+                .ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+
+                .Options;
+            // ----------------------------------------
+
+            _context = new AppDbContext(options);
+            _auditMock = new Mock<IAuditoriaService>();
+
+            // Instanciamos el servicio real con la BD simulada
+            _service = new FacturacionService(_context, _auditMock.Object);
         }
 
-        // --- GRUPO 1: CÁLCULOS BÁSICOS ---
-
         [Fact]
-        public void CalcularFactura_ConUnSoloItem_DebeCalcularSubtotalCorrecto()
+        public async Task GenerarFactura_AlAprobarPedido_DebeCrearFactura()
         {
             // Arrange
-            var pedido = new Pedido { IdPedido = 1 };
-            var detalles = new List<DetallePedido> { new DetallePedido { Cantidad = 1, PrecioUnitarioSnapshot = 10.00m } };
+            // 1. CREAMOS EL USUARIO (Vital para que el Include(x => x.Usuario) no falle)
+            var usuario = new Users { Id = 10, UserName = "juan", Email = "juan@test.com", FullName = "Juan Perez" };
+            _context.Users.Add(usuario);
 
-            // Act
-            var factura = _service.CalcularFactura(pedido, detalles, 0);
+            // 2. CREAMOS EL ESTADO
+            var estado = new EstadoPedido { IdEstadoPedido = 2, Nombre = "EN PREPARACION" };
+            _context.EstadoPedidos.Add(estado);
 
-            // Assert
-            factura.Subtotal.Should().Be(10.00m);
-        }
+            // 3. CREAMOS EL PRODUCTO
+            var producto = new Producto { IdProducto = 10, NombreProducto = "Hamburguesa", Precio = 10, Cantidad = 100 };
+            _context.Productos.Add(producto);
 
-        [Fact]
-        public void CalcularFactura_DebeAplicarIvaDel15Porciento()
-        {
-            var pedido = new Pedido { IdPedido = 1 };
-            var detalles = new List<DetallePedido> { new DetallePedido { Cantidad = 1, PrecioUnitarioSnapshot = 100.00m } };
+            // Guardamos estos maestros primero
+            await _context.SaveChangesAsync();
 
-            var factura = _service.CalcularFactura(pedido, detalles, 0);
-
-            factura.Iva.Should().Be(15.00m); // 15% de 100
-        }
-
-        // --- GRUPO 2: CASOS BORDE Y EXCEPCIONES ---
-
-        [Fact]
-        public void CalcularFactura_SinDetalles_DebeLanzarExcepcion()
-        {
-            var pedido = new Pedido { IdPedido = 1 };
-            var detalles = new List<DetallePedido>();
-
-            Action act = () => _service.CalcularFactura(pedido, detalles, 0);
-
-            act.Should().Throw<ArgumentException>().WithMessage("El pedido no tiene productos.");
-        }
-
-        [Fact]
-        public void CalcularFactura_ConDescuentoMayorAlTotal_DebeRetornarTotalCero()
-        {
-            var pedido = new Pedido { IdPedido = 1 };
-            var detalles = new List<DetallePedido> { new DetallePedido { Cantidad = 1, PrecioUnitarioSnapshot = 10.00m } };
-            // Total con IVA = 11.50
-
-            var factura = _service.CalcularFactura(pedido, detalles, 20.00m); // Descuento de 20
-
-            factura.Total.Should().Be(0);
-        }
-
-
-        [Fact]
-        public void CalcularFactura_ConDecimalesLargos_DebeRedondearADosDecimales()
-        {
-            // Arrange: 10.555 debería redondearse a 10.56
-            var pedido = new Pedido { IdPedido = 1 };
-            var detalles = new List<DetallePedido>
+            // 4. CREAMOS EL PEDIDO VINCULADO CORRECTAMENTE
+            var pedido = new Pedido
             {
-                new DetallePedido { Cantidad = 1, PrecioUnitarioSnapshot = 10.555m }
+                IdPedido = 777, // Forzamos un ID conocido para evitar dudas
+                UsuarioId = 10, // Coincide con el usuario creado
+                IdEstadoPedido = 2, // Coincide con el estado creado
+                FechaPedido = DateTime.Now,
+                Total = 10,
+                Detalles = new List<DetallePedido> {
+            new DetallePedido {
+                IdProducto = 10, // Coincide con producto
+                Cantidad = 1,
+                PrecioUnitarioSnapshot = 10,
+                Subtotal = 10,
+                NombreProductoSnapshot = "Hamburguesa"
+            }
+        }
             };
 
+            _context.Pedidos.Add(pedido);
+            await _context.SaveChangesAsync();
+
             // Act
-            var factura = _service.CalcularFactura(pedido, detalles, 0);
+            // Buscamos explícitamente el ID 777 que acabamos de crear
+            var result = await _service.GenerarFacturaPorAprobacionAsync(777);
 
             // Assert
-            factura.Subtotal.Should().Be(10.56m);
+            result.Should().NotBeNull();
+            result.IdPedido.Should().Be(777);
+            _context.Facturas.Count().Should().Be(1);
         }
 
+        // TEST 2: No generación de factura si el pedido no existe
         [Fact]
-        public void CalcularFactura_MultiplesItems_DebeSumarCorrectamente()
+        public async Task GenerarFactura_SiPedidoNoExiste_DebeLanzarExcepcion()
+        {
+            // Act
+            Func<Task> act = async () => await _service.GenerarFacturaPorAprobacionAsync(99);
+
+            // Assert
+            await act.Should().ThrowAsync<Exception>().WithMessage("*Pedido no encontrado*");
+        }
+
+        // TEST 3: Creación correcta de factura directa (Regla 9.3)
+        [Fact]
+        public async Task CrearFacturaDirecta_DebeTenerIdPedidoNulo()
         {
             // Arrange
-            var pedido = new Pedido { IdPedido = 2 };
-            var detalles = new List<DetallePedido>
-            {
-                new DetallePedido { Cantidad = 2, PrecioUnitarioSnapshot = 10.00m }, // 20.00
-                new DetallePedido { Cantidad = 1, PrecioUnitarioSnapshot = 5.50m }   // 5.50
+            var items = new List<DetallePedido> {
+                new DetallePedido {
+                    IdProducto = 1,
+                    Cantidad = 1,
+                    PrecioUnitarioSnapshot = 5,
+                    NombreProductoSnapshot = "Coca Cola"
+                }
             };
+            _context.Productos.Add(new Producto { IdProducto = 1, Cantidad = 10, NombreProducto = "Coca Cola", Precio = 5 });
+            await _context.SaveChangesAsync();
 
             // Act
-            var factura = _service.CalcularFactura(pedido, detalles, 0);
-
-            // Assert: Subtotal 25.50 + IVA (15% = 3.825 -> 3.83) = Total 29.32
-            factura.Subtotal.Should().Be(25.50m);
-            factura.Total.Should().Be(29.32m);
-        }
-
-        [Fact]
-        public void CalcularFactura_ProductoGratis_NoDebeRomperElCalculo()
-        {
-            // Arrange: Producto con precio 0 (Promoción)
-            var pedido = new Pedido { IdPedido = 3 };
-            var detalles = new List<DetallePedido>
-            {
-                new DetallePedido { Cantidad = 1, PrecioUnitarioSnapshot = 0m }
-            };
-
-            // Act
-            var factura = _service.CalcularFactura(pedido, detalles, 0);
+            var result = await _service.CrearFacturaDirectaAsync(1, items, 1, "123", "Juan");
 
             // Assert
-            factura.Total.Should().Be(0m);
+            result.IdPedido.Should().BeNull();
+            result.Estado.Should().Be("PAGADA");
         }
 
+        // TEST 4: Asociación correcta cliente-factura (RF-03)
         [Fact]
-        public void CalcularFactura_ConDescuentoExacto_TotalDebeSerCero()
-        {
-            // Arrange: Total 11.50 (10 + 1.50 IVA) - Descuento 11.50
-            var pedido = new Pedido { IdPedido = 4 };
-            var detalles = new List<DetallePedido>
-            {
-                new DetallePedido { Cantidad = 1, PrecioUnitarioSnapshot = 10.00m }
-            };
-
-            // Act
-            var factura = _service.CalcularFactura(pedido, detalles, 11.50m);
-
-            // Assert
-            factura.Total.Should().Be(0m);
-        }
-
-        [Fact]
-        public void CalcularFactura_CantidadesGrandes_DebeManejarPrecision()
-        {
-            // Arrange: 1000 unidades de 1.50
-            var pedido = new Pedido { IdPedido = 5 };
-            var detalles = new List<DetallePedido>
-            {
-                new DetallePedido { Cantidad = 1000, PrecioUnitarioSnapshot = 1.50m }
-            };
-
-            // Act
-            var factura = _service.CalcularFactura(pedido, detalles, 0);
-
-            // Assert: 1500 subtotal + 225 IVA = 1725 Total
-            factura.Total.Should().Be(1725.00m);
-        }
-
-        [Fact]
-        public void CalcularFactura_PedidoNulo_DebeLanzarArgumentNullException()
+        public async Task Factura_DebeEstarAsociadaAUnCliente()
         {
             // Arrange
-            Pedido pedido = null;
-            var detalles = new List<DetallePedido> { new DetallePedido() };
+            var items = new List<DetallePedido> {
+                new DetallePedido {
+                    IdProducto = 1,
+                    Cantidad = 1,
+                    PrecioUnitarioSnapshot = 5,
+                    NombreProductoSnapshot = "Papas Fritas"
+                }
+            };
+            _context.Productos.Add(new Producto { IdProducto = 1, Cantidad = 10, NombreProducto = "Papas Fritas", Precio = 5 });
+            await _context.SaveChangesAsync();
 
             // Act
-            Action act = () => _service.CalcularFactura(pedido, detalles, 0);
+            var result = await _service.CrearFacturaDirectaAsync(55, items, 1, "123", "Juan");
 
             // Assert
-            act.Should().Throw<ArgumentNullException>();
+            result.UsuarioId.Should().Be(55); // <--- Aquí verificamos el vínculo
         }
 
+        // TEST 5: Integridad financiera (Cálculo de IVA)
         [Fact]
-        public void CalcularFactura_DescuentoNegativo_DebeLanzarExcepcion()
+        public async Task Factura_DebeCalcularTotalConIvaCorrectamente()
         {
-            // No se puede hacer un descuento de "-10" (eso sería cobrar más)
-            var pedido = new Pedido { IdPedido = 1 };
-            var detalles = new List<DetallePedido> { new DetallePedido { PrecioUnitarioSnapshot = 10, Cantidad = 1 } };
-
-            Action act = () => _service.CalcularFactura(pedido, detalles, -5.00m);
-
-            act.Should().Throw<ArgumentException>().WithMessage("El descuento no puede ser negativo.");
-        }
-
-        // NOTA: Para validar precios negativos dentro de la lista, 
-        // tendríamos que agregar esa validación en el servicio. 
-        // Asumiendo que agregamos: if (d.Precio < 0) throw...
-        [Fact]
-        public void CalcularFactura_PrecioUnitarioNegativo_DebeLanzarExcepcion()
-        {
-            var pedido = new Pedido { IdPedido = 1 };
-            var detalles = new List<DetallePedido>
-            {
-                new DetallePedido { Cantidad = 1, PrecioUnitarioSnapshot = -10.00m }
+            // Arrange: Producto de $100
+            var items = new List<DetallePedido> {
+                new DetallePedido {
+                    IdProducto = 1,
+                    Cantidad = 1,
+                    PrecioUnitarioSnapshot = 100,
+                    NombreProductoSnapshot = "Banquete Familiar"
+                }
             };
+            _context.Productos.Add(new Producto { IdProducto = 1, Cantidad = 10, NombreProducto = "Banquete Familiar", Precio = 100 });
+            await _context.SaveChangesAsync();
 
-            // Si tu servicio permite precios negativos (devoluciones), cambia el Assert.
-            // Si no, debería fallar.
-            var factura = _service.CalcularFactura(pedido, detalles, 0);
+            // Act
+            var result = await _service.CrearFacturaDirectaAsync(1, items, 1, "123", "Juan");
 
-            // Si permitimos negativo, el total baja. Si no, debería ser validado antes.
-            // Asumamos que el cálculo matemático lo permite por ahora:
-            factura.Subtotal.Should().Be(-10.00m);
+            // Assert: 100 + 15% IVA = 115
+            result.Subtotal.Should().Be(100);
+            result.Iva.Should().Be(15);
+            result.Total.Should().Be(115);
+            result.Detalles.Should().HaveCount(1);
         }
 
+        // TEST 6: Validación de negocio (Lista vacía)
         [Fact]
-        public void CalcularFactura_ListaDetallesNula_DebeLanzarExcepcion()
-        {
-            var pedido = new Pedido { IdPedido = 1 };
-            List<DetallePedido> detalles = null;
-
-            Action act = () => _service.CalcularFactura(pedido, detalles, 0);
-
-            act.Should().Throw<ArgumentException>();
-        }
-
-        [Fact]
-        public void CalcularFactura_ListaDetallesVacia_DebeLanzarExcepcion()
-        {
-            var pedido = new Pedido { IdPedido = 1 };
-            var detalles = new List<DetallePedido>(); // Lista instanciada pero vacía 
-
-            Action act = () => _service.CalcularFactura(pedido, detalles, 0);
-
-            act.Should().Throw<ArgumentException>();
-        }
-
-
-        [Fact]
-        public void CalcularFactura_DebeMapearCorrectamenteElIdDelPedido()
+        public async Task FacturaDirecta_SinItems_DebeLanzarError()
         {
             // Arrange
-            var idPrueba = 999;
-            var pedido = new Pedido { IdPedido = idPrueba };
-            var detalles = new List<DetallePedido> { new DetallePedido { Cantidad = 1, PrecioUnitarioSnapshot = 10 } };
+            var itemsVacio = new List<DetallePedido>();
 
             // Act
-            var factura = _service.CalcularFactura(pedido, detalles, 0);
+            Func<Task> act = async () => await _service.CrearFacturaDirectaAsync(1, itemsVacio, 1, "123", "Juan");
 
             // Assert
-            factura.IdPedido.Should().Be(idPrueba);
+            await act.Should().ThrowAsync<Exception>();
         }
-
-        [Fact]
-        public void CalcularFactura_FechaEmision_DebeSerHoy()
-        {
-            var pedido = new Pedido { IdPedido = 1 };
-            var detalles = new List<DetallePedido> { new DetallePedido { Cantidad = 1, PrecioUnitarioSnapshot = 10 } };
-
-            var factura = _service.CalcularFactura(pedido, detalles, 0);
-
-            // Verificamos que la fecha sea reciente (margen de 1 segundo)
-            factura.FechaEmision.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(1));
-        }
-
-        [Fact]
-        public void EsConsistente_FacturaValida_DebeRetornarTrue()
-        {
-            // Arrange
-            var factura = new Factura
-            {
-                Subtotal = 100m,
-                Iva = 15m,
-                Total = 115m // (100 + 15) - 0 = 115
-            };
-
-            // Como quitamos la propiedad Descuento del modelo Factura, 
-            // el método EsConsistente asumirá descuento 0 o lo calculará implícitamente.
-            // Si modificaste EsConsistente para no usar .Descuento, este test pasa.
-
-            // Act
-            var esValida = _service.EsConsistente(factura);
-
-            // Assert
-            esValida.Should().BeTrue();
-        }
-
-        [Fact]
-        public void EsConsistente_TotalErroneo_DebeRetornarFalse()
-        {
-            // Arrange: Alguien manipuló el total manualmente
-            var factura = new Factura
-            {
-                Subtotal = 100m,
-                Iva = 15m,
-                Total = 5000m // Error obvio
-            };
-
-            // Act
-            var esValida = _service.EsConsistente(factura);
-
-            // Assert
-            esValida.Should().BeFalse();
-        }
-
-        [Fact]
-        public void CalcularFactura_DebeAsignarTipoPagoPorDefecto()
-        {
-            // Validamos que no venga con TipoPago 0 (que daría error de FK en SQL)
-            var pedido = new Pedido { IdPedido = 1 };
-            var detalles = new List<DetallePedido> { new DetallePedido { Cantidad = 1, PrecioUnitarioSnapshot = 10 } };
-
-            var factura = _service.CalcularFactura(pedido, detalles, 0);
-
-            factura.IdTipoPago.Should().NotBe(0);
-        }
-
     }
 }

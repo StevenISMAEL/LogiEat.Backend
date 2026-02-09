@@ -37,10 +37,22 @@
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" asp-page="/Admin/Usuarios/Index">👥 Gestión de Usuarios</a></li>
                                     <li><a class="dropdown-item" asp-page="/Admin/Usuarios/RegisterUser">➕ Nuevo Empleado</a></li>
+                                    <li class="nav-item border-start ms-2 ps-2">
+                                        <a class="nav-link text-warning fw-bold" asp-page="/Admin/Facturas/Directa">
+                                            ⚡ Facturación Directa
+                                        </a>
+                                    </li>
                                 </ul>
                             </li>
                         }
-
+                        @if (User.IsInRole("Vendedor"))
+                        {
+                            <li class="nav-item border-start ms-2 ps-2">
+                                <a class="nav-link text-warning fw-bold" asp-page="/Admin/Facturas/Directa">
+                                    ⚡ Facturación Directa
+                                </a>
+                            </li>
+                        }
 
                         @if (User.Identity.IsAuthenticated)
                         {

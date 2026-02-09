@@ -27,21 +27,23 @@ namespace LogiEat.Backend.Pages.Cliente
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return RedirectToPage("/Account/Login");
 
-            // SEGURIDAD: Solo permitimos ver la factura si pertenece al usuario logueado
-            // O si el usuario es Admin (para auditoría)
             bool esAdmin = await _userManager.IsInRoleAsync(user, "Admin");
+            bool esVendedor = await _userManager.IsInRoleAsync(user, "Vendedor"); 
 
             var facturaDb = await _context.Facturas
                 .Include(f => f.Detalles)
+                // No es estrictamente necesario incluir Pedido para la validación de dueño
+                // pero lo dejamos por si la vista lo usa.
                 .Include(f => f.Pedido)
                 .FirstOrDefaultAsync(f => f.IdFactura == id);
 
             if (facturaDb == null) return NotFound();
 
-            // Validación de dueño
-            if (!esAdmin && facturaDb.Pedido.UsuarioId != user.Id)
+            // --- VALIDACIÓN DE SEGURIDAD CORREGIDA ---
+            // Usamos el UsuarioId de la Factura, que nunca es nulo para ventas directas o pedidos
+            if (!esAdmin && !esVendedor && facturaDb.UsuarioId != user.Id)
             {
-                return Forbid(); // 403 Prohibido
+                return Forbid();
             }
 
             Factura = facturaDb;

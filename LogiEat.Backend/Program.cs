@@ -1,6 +1,6 @@
 using LogiEat.Backend.Data;
 using LogiEat.Backend.Models;
-using LogiEat.Backend.Services;
+using LogiEat.Backend.Services.Facturacion;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

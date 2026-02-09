@@ -14,6 +14,7 @@ namespace LogiEat.Backend.Data
             // 1. Crear Roles si no existen
             await CreateRoleAsync(roleManager, "Admin");
             await CreateRoleAsync(roleManager, "Cliente");
+            await CreateRoleAsync(roleManager, "Vendedor");
 
             // 2. Crear Usuario Admin si no existe
             var adminEmail = "admin@logieat.com";

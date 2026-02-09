@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using LogiEat.Backend.Services;
+using LogiEat.Backend.Services.Facturacion;
 
 namespace LogiEat.Backend.Pages.Admin
 {
@@ -12,12 +13,15 @@ namespace LogiEat.Backend.Pages.Admin
     [Authorize(Roles = "Admin")]
     public class IndexModel : PageModel
     {
+        // 1. Inyecta el servicio en el constructor
+        private readonly IFacturacionService _facturacionService;
         private readonly AppDbContext _context;
         private readonly IAuditoriaService _auditoria;
-        public IndexModel(AppDbContext context, IAuditoriaService auditoria)
+        public IndexModel(AppDbContext context, IAuditoriaService auditoria, IFacturacionService facturacionService)
         {
             _context = context;
             _auditoria = auditoria;
+            _facturacionService = facturacionService;
         }
 
         // La inicializamos como una lista vacía desde el principio
@@ -34,23 +38,18 @@ namespace LogiEat.Backend.Pages.Admin
                 .ToListAsync();
         }
 
-        // Asegúrate de inyectar el servicio de Auditoría
         public async Task<IActionResult> OnPostAceptarAsync(int id)
         {
-            var pedido = await _context.Pedidos.FindAsync(id);
-            if (pedido != null)
+            try
             {
-                // Buscamos el siguiente estado: "EN PREPARACION"
-                var estadoCocina = await _context.EstadoPedidos
-                    .FirstOrDefaultAsync(e => e.Nombre.Contains("PREPARACION") || e.Nombre.Contains("COCINA"));
+                // Una sola línea que hace todo el trabajo sucio
+                var factura = await _facturacionService.GenerarFacturaPorAprobacionAsync(id);
 
-                if (estadoCocina != null)
-                {
-                    pedido.IdEstadoPedido = estadoCocina.IdEstadoPedido;
-                    await _context.SaveChangesAsync();
-
-                    await _auditoria.RegistrarEvento("Aprobar Pedido", "Pedido", id, "El Admin aceptó el pedido y pasó a cocina.");
-                }
+                TempData["SuccessMessage"] = $"Pedido aprobado. Factura #{factura.IdFactura} generada.";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
             }
             return RedirectToPage();
         }

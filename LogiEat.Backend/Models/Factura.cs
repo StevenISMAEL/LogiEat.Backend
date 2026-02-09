@@ -8,13 +8,9 @@ namespace LogiEat.Backend.Models
         [Key]
         public int IdFactura { get; set; }
 
-        public int IdPedido { get; set; }
-
-        // --- AGREGA ESTA LÍNEA PARA ARREGLAR EL ERROR ---
+        public int? IdPedido { get; set; }
         [ForeignKey("IdPedido")]
-        public Pedido Pedido { get; set; }
-        // -----------------------------------------------
-
+        public Pedido? Pedido { get; set; } 
         public DateTime FechaEmision { get; set; }
 
         public string RucCedula { get; set; }
@@ -37,6 +33,8 @@ namespace LogiEat.Backend.Models
         public string? ReferenciaPago { get; set; } // Para num. de comprobante o "cambio de $20"
 
         public List<DetalleFactura> Detalles { get; set; } = new();
-
+        public int? UsuarioId { get; set; } // Enlace directo al cliente
+        [ForeignKey("UsuarioId")]
+        public Users? Usuario { get; set; }
     }
 }

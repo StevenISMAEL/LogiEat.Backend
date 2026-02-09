@@ -1,0 +1,164 @@
+﻿@page
+@model LogiEat.Backend.Pages.Admin.Facturas.DirectaModel
+@{
+    ViewData["Title"] = "Facturación Directa";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-7">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">📦 Catálogo de Productos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive" style="max-height: 600px;">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Precio</th>
+                                    <th>Stock</th>
+                                    <th class="text-end">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in Model.Productos)
+                                {
+                                    <tr>
+                                        <td><strong>@p.NombreProducto</strong></td>
+                                        <td class="text-primary fw-bold">$@p.Precio</td>
+                                        <td><span class="badge bg-light text-dark border">@p.Cantidad</span></td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-success"
+                                                    onclick="agregarItem(@p.IdProducto, '@p.NombreProducto', @p.Precio.ToString("F2", System.Globalization.CultureInfo.InvariantCulture), @p.Cantidad)">
+                                                ➕ Agregar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-5">
+            <form method="post" asp-page-handler="Generar" id="formFactura">
+                <div class="card shadow-sm border-primary mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">📑 Datos del Cliente (RF-03)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Seleccionar Cliente Registrado</label>
+                            <select name="idCliente" asp-items="Model.ClientesLista" class="form-select" required>
+                                <option value="">-- Buscar Cliente --</option>
+                            </select>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <input type="text" name="ruc" class="form-control" placeholder="RUC / Cédula" required />
+                            </div>
+                            <div class="col-6">
+                                <input type="text" name="nombre" class="form-control" placeholder="Nombre en Factura" required />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-body p-0">
+                        <table class="table mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Cant.</th>
+                                    <th>Descripción</th>
+                                    <th class="text-end">Total</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-items">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer bg-light">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Subtotal:</span> <span id="lbl-subtotal">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1 text-muted">
+                            <span>IVA (15%):</span> <span id="lbl-iva">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between fs-5 fw-bold text-success border-top pt-2">
+                            <span>TOTAL:</span> <span id="lbl-total">$0.00</span>
+                        </div>
+
+                        <input type="hidden" name="cartJson" id="cartJson" />
+                        <div class="mt-3 mb-2">
+                            <label class="small fw-bold">Método de Pago</label>
+                            <select name="idTipoPago" class="form-select form-select-sm">
+                                <option value="1">Efectivo</option>
+                                <option value="2">Tarjeta de Crédito</option>
+                                <option value="3">Transferencia</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100 py-2 fw-bold mt-2" id="btn-finalizar" disabled>
+                            🚀 Generar Factura Directa
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let carritoVenta = [];
+
+        function agregarItem(id, nombre, precio, stockMax) {
+            const existe = carritoVenta.find(i => i.Id === id);
+            if (existe) {
+                if(existe.Cantidad < stockMax) existe.Cantidad++;
+            } else {
+                carritoVenta.push({ Id: id, Nombre: nombre, Precio: precio, Cantidad: 1 });
+            }
+            renderizar();
+        }
+
+        function eliminarItem(id) {
+            carritoVenta = carritoVenta.filter(i => i.Id !== id);
+            renderizar();
+        }
+
+        function renderizar() {
+            const tbody = document.getElementById('tabla-items');
+            tbody.innerHTML = '';
+            let subtotal = 0;
+
+            carritoVenta.forEach(i => {
+                let totalLinea = i.Precio * i.Cantidad;
+                subtotal += totalLinea;
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${i.Cantidad}</td>
+                        <td>${i.Nombre}</td>
+                        <td class="text-end">$${totalLinea.toFixed(2)}</td>
+                        <td class="text-end"><button type="button" class="btn btn-link btn-sm text-danger" onclick="eliminarItem(${i.Id})">✖</button></td>
+                    </tr>
+                `;
+            });
+
+            const iva = subtotal * 0.15;
+            const total = subtotal + iva;
+
+            document.getElementById('lbl-subtotal').innerText = '$' + subtotal.toFixed(2);
+            document.getElementById('lbl-iva').innerText = '$' + iva.toFixed(2);
+            document.getElementById('lbl-total').innerText = '$' + total.toFixed(2);
+            document.getElementById('cartJson').value = JSON.stringify(carritoVenta);
+            document.getElementById('btn-finalizar').disabled = carritoVenta.length === 0;
+        }
+    </script>
+}

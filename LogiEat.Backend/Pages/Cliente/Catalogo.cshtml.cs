@@ -15,17 +15,15 @@ namespace LogiEat.Backend.Pages.Cliente
     {
         private readonly AppDbContext _context;
         private readonly UserManager<Users> _userManager;
-        private readonly Services.IAuditoriaService _auditoria;
+        private readonly IAuditoriaService _auditoria;
 
-        // 1. Inyectamos el servicio de facturación
-        private readonly IFacturacionService _facturacionService;
+        // SE ELIMINÓ: IFacturacionService (La factura ahora se genera en la aprobación)
 
-        public CatalogoModel(AppDbContext context, UserManager<Users> userManager, Services.IAuditoriaService auditoria, IFacturacionService facturacionService)
+        public CatalogoModel(AppDbContext context, UserManager<Users> userManager, IAuditoriaService auditoria)
         {
             _context = context;
             _userManager = userManager;
             _auditoria = auditoria;
-            _facturacionService = facturacionService;
         }
 
         public IList<Producto> Productos { get; set; } = new List<Producto>();
@@ -58,48 +56,47 @@ namespace LogiEat.Backend.Pages.Cliente
 
             try
             {
-                // 1. Configuración Inicial
-                var estadoPagado = await _context.EstadoPedidos
+                // 1. Configuración de Estado inicial (Esperando Aprobación)
+                var estadoEsperando = await _context.EstadoPedidos
                     .FirstOrDefaultAsync(e => e.Nombre.Contains("PAGADO") || e.Nombre.Contains("ESPERANDO"));
-                int idEstadoFinal = estadoPagado?.IdEstadoPedido ?? 1;
+
+                int idEstadoInicial = estadoEsperando?.IdEstadoPedido ?? 1;
 
                 var pedido = new Pedido
                 {
                     UsuarioId = user.Id,
                     FechaPedido = DateTime.Now,
-                    IdEstadoPedido = idEstadoFinal,
-                    Detalles = new List<DetallePedido>()
+                    IdEstadoPedido = idEstadoInicial,
+                    Detalles = new List<DetallePedido>(),
+                    IdTransaccionPago = referencia // Guardamos la referencia para que el Admin la verifique
                 };
 
-                // Lista temporal para pasar al servicio de facturación
-                var detallesParaFactura = new List<DetallePedido>();
+                decimal subtotalPedido = 0;
 
-                // 2. Procesar Productos (Validación de Stock y armado de lista)
+                // 2. Procesar Productos y Validar Stock
                 foreach (var item in carrito)
                 {
+                    // Obtenemos el precio directamente de la BD (Seguridad: evita manipulación de precios)
                     var productoDb = await _context.Productos.FindAsync(item.Id);
 
                     if (productoDb == null) throw new Exception($"El producto ID {item.Id} ya no existe.");
                     if (productoDb.Cantidad < item.Cantidad) throw new Exception($"Stock insuficiente para {productoDb.NombreProducto}");
 
-                    // Importante: Aquí solo capturamos datos, NO calculamos totales aún.
-                    // El servicio se encargará de multiplicar y sumar.
-                    var detalle = new DetallePedido
+                    var subtotalLinea = productoDb.Precio * item.Cantidad;
+                    subtotalPedido += subtotalLinea;
+
+                    pedido.Detalles.Add(new DetallePedido
                     {
                         IdProducto = item.Id,
                         NombreProductoSnapshot = productoDb.NombreProducto,
-                        PrecioUnitarioSnapshot = productoDb.Precio, // Precio base
-                        Cantidad = item.Cantidad
-                    };
+                        PrecioUnitarioSnapshot = productoDb.Precio,
+                        Cantidad = item.Cantidad,
+                        Subtotal = subtotalLinea
+                    });
 
-                    // Agregamos a ambas listas (la del pedido y la temporal para cálculo)
-                    pedido.Detalles.Add(detalle);
-                    detallesParaFactura.Add(detalle);
-
-                    // Descontar Stock
+                    // Descontar Stock y Registrar Movimiento
                     productoDb.Cantidad -= item.Cantidad;
 
-                    // Registrar movimiento de inventario
                     _context.DetallesProductos.Add(new DetallesProducto
                     {
                         IdProducto = item.Id,
@@ -107,86 +104,33 @@ namespace LogiEat.Backend.Pages.Cliente
                         TipoEstado = "pedido",
                         Precio = productoDb.Precio,
                         Fecha = DateTime.Now,
-                        IdTransaccion = 0 // Se actualizará al guardar
+                        IdTransaccion = 0
                     });
                 }
 
-                // ---------------------------------------------------------------------
-                // 3. EL GRAN CAMBIAZO: Delegamos la matemática al Servicio 🧠
-                // ---------------------------------------------------------------------
-                // Ya no hacemos: subtotal = subtotal + ...
-                // Llamamos a nuestro método probado por los 20 tests unitarios:
+                // 3. Cálculo de Impuestos y Total Final del Pedido
+                decimal iva = Math.Round(subtotalPedido * 0.15m, 2);
+                pedido.Total = subtotalPedido + iva;
 
-                var facturaGenerada = _facturacionService.CalcularFactura(pedido, detallesParaFactura, 0); // 0 descuento por ahora
-
-                // Completamos datos de UI que el servicio no conoce
-                facturaGenerada.RucCedula = string.IsNullOrEmpty(rucCliente) ? "9999999999999" : rucCliente;
-                facturaGenerada.NombreCliente = string.IsNullOrEmpty(nombreCliente) ? user.UserName : nombreCliente;
-                facturaGenerada.Estado = "PAGADA";
-                facturaGenerada.IdTipoPago = idTipoPago;
-
-                // Actualizamos el total del pedido con el cálculo preciso del servicio
-                pedido.Total = facturaGenerada.Total;
-
-                // --- 4. VALIDACIÓN DE PAGO (Lógica de Referencia) ---
-                string referenciaFormateada = referencia;
-
-                if (idTipoPago == 2) // EFECTIVO
-                {
-                    if (decimal.TryParse(referencia, out decimal montoEntregado))
-                    {
-                        // Usamos el total calculado por el servicio
-                        if (montoEntregado < facturaGenerada.Total)
-                        {
-                            throw new Exception($"Monto insuficiente. Total a pagar: ${facturaGenerada.Total:F2}");
-                        }
-                        decimal cambio = montoEntregado - facturaGenerada.Total;
-                        referenciaFormateada = $"Paga con: ${montoEntregado:F2} - Cambio: ${cambio:F2}";
-                    }
-                    else
-                    {
-                        throw new Exception("Monto en efectivo inválido.");
-                    }
-                }
-                else if (idTipoPago == 3) referenciaFormateada = $"Comprobante: {referencia}";
-                else referenciaFormateada = "Pago con Tarjeta";
-
-                facturaGenerada.ReferenciaPago = referenciaFormateada;
-
-                // 5. Guardado en Base de Datos
+                // 4. Guardar Pedido (SIN FACTURA)
                 _context.Pedidos.Add(pedido);
-                await _context.SaveChangesAsync(); // Guardamos pedido para tener el ID
-
-                // Asignamos el ID real del pedido a la factura
-                facturaGenerada.IdPedido = pedido.IdPedido;
-
-                // Re-creamos los detalles de factura basados en el cálculo
-                // (Opcional: Podrías mover esto al servicio también en el futuro)
-                facturaGenerada.Detalles = detallesParaFactura.Select(d => new DetalleFactura
-                {
-                    ProductoNombre = d.NombreProductoSnapshot,
-                    Cantidad = d.Cantidad,
-                    PrecioUnitario = d.PrecioUnitarioSnapshot,
-                    SubtotalLinea = d.Cantidad * d.PrecioUnitarioSnapshot
-                }).ToList();
-
-                _context.Facturas.Add(facturaGenerada);
                 await _context.SaveChangesAsync();
 
-                await _auditoria.RegistrarEvento("Nuevo Pedido", "Factura", facturaGenerada.IdFactura,
-                    $"Factura #{facturaGenerada.IdFactura} ($ {facturaGenerada.Total})");
+                // 5. Auditoría
+                await _auditoria.RegistrarEvento("Creación Pedido", "Pedido", pedido.IdPedido,
+                    $"Pedido #{pedido.IdPedido} creado por cliente. Esperando aprobación del supervisor.");
 
                 await transaction.CommitAsync();
 
                 TempData["LimpiarCarrito"] = true;
-                TempData["SuccessMessage"] = $"¡Pedido pagado! Factura #{facturaGenerada.IdFactura} generada.";
+                TempData["SuccessMessage"] = $"¡Pedido #{pedido.IdPedido} realizado con éxito! Será facturado una vez que sea aprobado.";
+
                 return RedirectToPage();
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                string errorReal = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
-                TempData["ErrorMessage"] = $"⛔ {errorReal}";
+                TempData["ErrorMessage"] = $"⛔ Error: {ex.Message}";
                 return RedirectToPage();
             }
         }

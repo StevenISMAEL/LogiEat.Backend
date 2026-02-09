@@ -27,11 +27,9 @@ namespace LogiEat.Backend.Pages.Cliente
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return;
 
-            // Buscamos las facturas asociadas a los pedidos de este usuario
-            // Nota: Navegamos Factura -> Pedido -> UsuarioId
+            // Buscamos por el UsuarioId de la factura, no por el del pedido
             Facturas = await _context.Facturas
-                .Include(f => f.Pedido) // Necesario para filtrar por usuario
-                .Where(f => f.Pedido.UsuarioId == user.Id)
+                .Where(f => f.UsuarioId == user.Id) // Filtro directo y eficiente
                 .OrderByDescending(f => f.FechaEmision)
                 .ToListAsync();
         }
