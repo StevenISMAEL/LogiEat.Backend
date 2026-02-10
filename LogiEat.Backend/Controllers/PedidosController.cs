@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-
 namespace LogiEat.Backend.Controllers
 {
     [Route("api/[controller]")]
@@ -127,31 +126,81 @@ namespace LogiEat.Backend.Controllers
             return Ok(respuestaMovil);
         }
 
-        // Endpoint extra para el Admin (Web)
+        // Endpoint extra para el Admin (Móvil y Web)
         [HttpGet("Pendientes")]
-        [Authorize(Roles = "Admin")]
+        // 🔴 CRÍTICO: Agregamos el esquema JWT y aseguramos el Rol
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Admin")]
         public async Task<IActionResult> Pendientes()
         {
             var pedidos = await _context.Pedidos
                 .Include(p => p.EstadoPedido)
                 .Include(p => p.Detalles)
                 .Include(p => p.Usuario)
-                // Filtramos por nombre del estado en la tabla relacionada
+                // Filtramos los que aún no están terminados
                 .Where(p => p.EstadoPedido.Nombre != "ENTREGADO" && p.EstadoPedido.Nombre != "RECHAZADO")
                 .OrderByDescending(p => p.FechaPedido)
                 .ToListAsync();
 
-            var respuestaMovil = pedidos.Select(p => new
+            // Mapeamos al mismo formato que espera el móvil para no tener errores de lectura
+            var respuesta = pedidos.Select(p => new
             {
                 p.IdPedido,
                 p.FechaPedido,
                 p.Total,
-                Estado = p.EstadoPedido != null ? p.EstadoPedido.Nombre : "Desconocido",
-                Usuario = p.Usuario != null ? p.Usuario.FullName : "Sin Nombre",
-                p.Detalles
+                // Usamos el nombre del estado para la lógica de colores del móvil
+                Estado = p.EstadoPedido != null ? p.EstadoPedido.Nombre : "PENDIENTE",
+                Detalles = p.Detalles.Select(d => new {
+                    d.NombreProductoSnapshot,
+                    d.Cantidad,
+                    d.Subtotal
+                })
             });
 
-            return Ok(respuestaMovil);
+            return Ok(respuesta);
+        }
+
+        // -------------------------------------------------------
+        // ZONA ADMIN (NUEVOS ENDPOINTS PARA EL MÓVIL)
+        // -------------------------------------------------------
+
+        // POST: api/Pedidos/Aprobar/5
+        // Este endpoint replica la lógica de la Web: Aprueba y Genera Factura
+        [HttpPost("Aprobar/{id}")]
+        [Authorize(Roles = "Admin,Cocina")] // Ajusta los roles según necesites
+        public async Task<IActionResult> AprobarPedido(int id, [FromServices] LogiEat.Backend.Services.Facturacion.IFacturacionService facturacionService)
+        {
+            try
+            {
+                // Reutilizamos tu servicio de facturación que ya contiene la lógica de negocio y transacción
+                var factura = await facturacionService.GenerarFacturaPorAprobacionAsync(id);
+                return Ok(new { mensaje = "Pedido aprobado y facturado", idFactura = factura.IdFactura });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        // POST: api/Pedidos/CambiarEstado/5?nuevoEstado=RECHAZADO
+        [HttpPost("CambiarEstado/{id}")]
+        [Authorize(Roles = "Admin,Cocina")]
+        public async Task<IActionResult> CambiarEstado(int id, string nuevoEstado)
+        {
+            var pedido = await _context.Pedidos.FindAsync(id);
+            if (pedido == null) return NotFound("Pedido no encontrado");
+
+            // Buscamos el ID del estado basado en el texto (ej: "RECHAZADO")
+            // Usamos Contains para ser flexibles con mayúsculas/minúsculas parciales
+            var estadoDb = await _context.EstadoPedidos
+                .FirstOrDefaultAsync(e => e.Nombre.Contains(nuevoEstado));
+
+            if (estadoDb == null)
+                return BadRequest($"El estado '{nuevoEstado}' no existe en la base de datos.");
+
+            pedido.IdEstadoPedido = estadoDb.IdEstadoPedido;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { mensaje = $"Estado actualizado a {estadoDb.Nombre}" });
         }
     }
 }

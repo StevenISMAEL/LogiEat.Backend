@@ -1,96 +1,96 @@
-using LogiEat.Backend.Data;
+ï»¿using LogiEat.Backend.Data;
 using LogiEat.Backend.Models;
+using LogiEat.Backend.Services;
 using LogiEat.Backend.Services.Facturacion;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
 using System.Text;
-using System.Text.Json.Serialization;
+using System.IdentityModel.Tokens.Jwt; // <--- AGREGADO
+using System.Text.Json.Serialization; // <--- Necesitas este using arriba
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. CONFIGURACIÓN DE BASE DE DATOS
+// ðŸ”´ FIX 1: Evitar que .NET cambie los nombres de los claims (sub, roles, etc)
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 2. CONFIGURACIÓN DE IDENTITY
-builder.Services.AddIdentity<Users, Roles>(options => {
+builder.Services.AddIdentity<Users, Roles>(options =>
+{
     options.Password.RequireDigit = false;
     options.Password.RequiredLength = 6;
-    options.User.RequireUniqueEmail = true;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireLowercase = false;
 })
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
 
-// 3. CONFIGURACIÓN DE AUTENTICACIÓN (SIMPLIFICADA)
-// Quitamos "SmartAuth". Dejamos que Identity maneje las Cookies por defecto.
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
+
 builder.Services.AddAuthentication(options =>
 {
-    // Por defecto, todo es Cookie (para la Web)
-    // La API usará JWT porque se lo ordenamos en los Controladores con [Authorize(Schemes=...)]
-    options.DefaultAuthenticateScheme = IdentityConstants.ApplicationScheme;
-    options.DefaultChallengeScheme = IdentityConstants.ApplicationScheme;
-    options.DefaultSignInScheme = IdentityConstants.ApplicationScheme;
+    // Mantenemos la flexibilidad para Cookies y JWT
 })
-.AddJwtBearer(options => {
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
-    };
-});
-
-// 4. CONFIGURACIÓN DE COOKIES (IMPORTANTE PARA RAZOR PAGES)
-// Esto le dice al sistema: "Si alguien no está logueado en la Web, mándalo a /Account/Login"
-builder.Services.ConfigureApplicationCookie(options =>
+.AddCookie(options =>
 {
     options.LoginPath = "/Account/Login";
     options.AccessDeniedPath = "/Account/AccessDenied";
-    options.ExpireTimeSpan = TimeSpan.FromHours(1); // La sesión web dura 1 hora
-});
-
-// 5. SERVICIOS WEB Y API
-builder.Services.AddControllers().AddJsonOptions(options =>
+})
+.AddJwtBearer(options =>
 {
-    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-});
-builder.Services.AddRazorPages();
-
-// 6. SWAGGER
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c => {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "LogiEat Backend", Version = "v1" });
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    options.RequireHttpsMetadata = false; // ðŸ”´ FIX 2: Permitir HTTP para desarrollo mÃ³vil
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        Name = "Authorization",
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer",
-        In = ParameterLocation.Header,
-        Description = "Ingresa 'Bearer' [espacio] y tu token"
-    });
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement {
-        { new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } }, new string[] {} }
-    });
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidateAudience = true,
+        ValidAudience = jwtSettings["Audience"],
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero,
+        // ðŸ”´ FIX 3: Asegurar que el ID del usuario se lea del claim correcto
+        NameClaimType = JwtRegisteredClaimNames.Sub
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context => {
+            Console.WriteLine("ðŸ”´ [ERROR JWT] " + context.Exception.Message);
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context => {
+            Console.WriteLine("ðŸŸ¢ [OK] Usuario autenticado");
+            return Task.CompletedTask;
+        },
+        OnChallenge = context => {
+            Console.WriteLine($"ðŸŸ  [CHALLENGE] {context.ErrorDescription}");
+            return Task.CompletedTask;
+        }
+    };
 });
 
-// 1. Necesario para obtener la IP y el Usuario dentro de los servicios
-builder.Services.AddHttpContextAccessor();
-
-// 2. Registramos nuestro nuevo servicio
-builder.Services.AddScoped<LogiEat.Backend.Services.IAuditoriaService, LogiEat.Backend.Services.AuditoriaService>();
-//XUNIT
+builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
 builder.Services.AddScoped<IFacturacionService, FacturacionService>();
+builder.Services.AddScoped<IPagoService, PagoServices>();
+
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Esta lÃ­nea rompe el bucle infinito
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    }); builder.Services.AddRazorPages();
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
-
-// --- PIPELINE ---
 
 if (app.Environment.IsDevelopment())
 {
@@ -98,9 +98,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-app.UseStaticFiles();
+// ðŸ”´ FIX 4: Comenta esta lÃ­nea solo mientras pruebas en desarrollo local
+// app.UseHttpsRedirection(); 
 
+app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthentication();
@@ -109,21 +110,10 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapRazorPages();
 
-// SEEDER AUTOMÁTICO
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    try
-    {
-        await DbSeeder.SeedRolesAndAdminAsync(services);
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Error en el Seeder.");
-    }
+    await DbSeeder.SeedRolesAndAdminAsync(services);
 }
-
-
 
 app.Run();

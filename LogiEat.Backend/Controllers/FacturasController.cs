@@ -90,5 +90,41 @@ namespace LogiEat.Backend.Controllers
 
             return Ok(dto);
         }
+
+        [HttpPost("Directa")]
+        [Authorize(Roles = "Admin,Vendedor")]
+        public async Task<IActionResult> CrearFacturaDirecta(
+        [FromBody] CrearFacturaDirectaDto dto,
+        [FromServices] LogiEat.Backend.Services.Facturacion.IFacturacionService facturacionService)
+        {
+            try
+            {
+                // YA NO USAMOS EL ID DEL TOKEN. Usamos el que seleccionó el usuario.
+                // Si viene null, asumimos 0 (Consumidor Final anónimo o sin cuenta)
+                int idCliente = dto.IdCliente ?? 0;
+
+                var itemsEntidad = dto.Items.Select(i => new LogiEat.Backend.Models.DetallePedido
+                {
+                    IdProducto = i.IdProducto,
+                    Cantidad = i.Cantidad,
+                    PrecioUnitarioSnapshot = 0,
+                    NombreProductoSnapshot = ""
+                }).ToList();
+
+                var factura = await facturacionService.CrearFacturaDirectaAsync(
+                    idCliente, // <--- Pasamos el ID seleccionado en el ComboBox
+                    itemsEntidad,
+                    dto.IdTipoPago,
+                    dto.Ruc,
+                    dto.Nombre
+                );
+
+                return Ok(new { mensaje = "Venta registrada", idFactura = factura.IdFactura });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
     }
 }

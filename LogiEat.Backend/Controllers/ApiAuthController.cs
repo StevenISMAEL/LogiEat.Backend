@@ -108,21 +108,13 @@ namespace LogiEat.Backend.Controllers
         {
             var claims = new List<Claim>
             {
-                // 1. El SUB (Sujeto) ahora es el ID del usuario (Esto arregla el conflicto)
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()), 
-    
-                // 2. El Email lo ponemos en su propio campo estándar
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
-
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-    
-                // Dejamos este por compatibilidad, aunque el sub ya hace el trabajo
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-
                 new Claim("NombreCompleto", user.FullName ?? "Usuario")
             };
 
-            // Añadir roles como Claims
             foreach (var role in roles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
@@ -130,7 +122,9 @@ namespace LogiEat.Backend.Controllers
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var expires = DateTime.Now.AddDays(1); // Token válido por 1 día
+
+            // CORRECCIÓN AQUÍ: Usar UtcNow es el estándar para evitar problemas de zona horaria
+            var expires = DateTime.UtcNow.AddDays(1);
 
             var token = new JwtSecurityToken(
                 _configuration["Jwt:Issuer"],
@@ -171,6 +165,27 @@ namespace LogiEat.Backend.Controllers
                 EsAdmin = User.IsInRole("Admin"), // <--- ¡Esto es lo que importa!
                 Claims = userClaims
             });
+        }
+        // GET: api/ApiAuth/Clientes
+        // Usado para llenar el ComboBox en Facturación Directa
+        [HttpGet("Clientes")]
+        [Authorize(Roles = "Admin,Vendedor")]
+        public async Task<IActionResult> GetClientes()
+        {
+            // Traemos todos los usuarios que tengan el rol "Cliente"
+            var clientes = await _userManager.GetUsersInRoleAsync("Cliente");
+
+            var lista = clientes.Select(u => new
+            {
+                Id = u.Id,
+                Nombre = u.FullName,
+                Email = u.Email,
+                // Asumimos que el UserName o Email sirve como RUC si no tienes campo RUC en Identity
+                // Si tienes un campo RUC personalizado, úsalo aquí. 
+                Ruc = "9999999999999"
+            });
+
+            return Ok(lista);
         }
     }
 }

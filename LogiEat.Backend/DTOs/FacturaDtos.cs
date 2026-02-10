@@ -25,4 +25,12 @@
         public decimal PrecioUnitario { get; set; }
         public decimal Subtotal { get; set; }
     }
+    public class CrearFacturaDirectaDto
+    {
+        public int? IdCliente { get; set; } // <--- EL DATO CLAVE
+        public string Ruc { get; set; }
+        public string Nombre { get; set; }
+        public int IdTipoPago { get; set; }
+        public List<ProductoItemDto> Items { get; set; }
+    }
 }

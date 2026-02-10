@@ -1,4 +1,7 @@
 <Solution>
+  <Project Path="../../Movil/MAUI.Enterprice-main/LogiEat.Mobile.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
   <Project Path="LogiEat.Backend/LogiEat.Backend.csproj" />
   <Project Path="LogiEat.Tests/LogiEat.Tests.csproj" Id="9759b24f-2b0b-428b-b7f0-1c97b4968bea" />
 </Solution>
