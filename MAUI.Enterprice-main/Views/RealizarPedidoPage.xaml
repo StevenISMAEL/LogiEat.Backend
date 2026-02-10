@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LogiEat.Mobile.Views.RealizarPedidoPage"
+             Title="Menú LogiEat"
+             BackgroundColor="#f5f5f5">
+
+    <Grid RowDefinitions="*, Auto">
+
+        <!-- Lista de Productos (Grid 2 columnas) -->
+        <CollectionView x:Name="CvProductos" Margin="10">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout Orientation="Vertical" Span="2" HorizontalItemSpacing="10" VerticalItemSpacing="10"/>
+            </CollectionView.ItemsLayout>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Padding="0" CornerRadius="15" IsClippedToBounds="True" BackgroundColor="White" HeightRequest="220">
+                        <Grid RowDefinitions="120, *, Auto, Auto">
+                            <!-- Imagen del Producto (URLs reales de muestra) -->
+                            <Image Grid.Row="0" Source="{Binding ImagenUrl}" Aspect="AspectFill"/>
+
+                            <!-- Nombre -->
+                            <Label Grid.Row="1" Text="{Binding Nombre}" FontAttributes="Bold" FontSize="14" TextColor="#333" Margin="10,5,10,0"/>
+
+                            <!-- Precio -->
+                            <Label Grid.Row="2" Text="{Binding Precio, StringFormat='${0:F2}'}" TextColor="Green" FontAttributes="Bold" Margin="10,0"/>
+
+                            <!-- Botón Agregar -->
+                            <Button Grid.Row="3" Text="AGREGAR AL CARRITO" 
+                                    FontSize="10" 
+                                    BackgroundColor="#ffc107" 
+                                    TextColor="Black" 
+                                    FontAttributes="Bold"
+                                    Margin="0" 
+                                    CornerRadius="0"
+                                    Clicked="OnProductoAgregado"
+                                    CommandParameter="{Binding .}"/>
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Barra Inferior de Carrito -->
+        <Frame Grid.Row="1" BackgroundColor="White" CornerRadius="20" Margin="10" Padding="15" Shadow="{Shadow Brush=Black, Offset='0,5', Radius=10}">
+            <Grid ColumnDefinitions="*, Auto">
+                <VerticalStackLayout VerticalOptions="Center">
+                    <Label Text="Total del Pedido" FontSize="12" TextColor="Gray"/>
+                    <Label x:Name="LblTotal" Text="$0.00" FontSize="24" FontAttributes="Bold" TextColor="#333"/>
+                    <Label x:Name="LblItems" Text="0 ítems" FontSize="12" TextColor="#007bff"/>
+                </VerticalStackLayout>
+
+                <Button Grid.Column="1" 
+                        Text="CONFIRMAR" 
+                        BackgroundColor="#28a745" 
+                        FontAttributes="Bold" 
+                        HeightRequest="50" 
+                        CornerRadius="25"
+                        Padding="30,0"
+                        Clicked="OnEnviarPedidoClicked"/>
+            </Grid>
+        </Frame>
+    </Grid>
+</ContentPage>

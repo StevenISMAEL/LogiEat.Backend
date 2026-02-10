@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LogiEat.Mobile.Views.LoginPage"
+             Title="Acceso LogiEat"
+             BackgroundColor="#f0f0f0">
+
+    <VerticalStackLayout Spacing="20" Padding="30" VerticalOptions="Center">
+
+        <Label Text="Bienvenido a LogiEat" 
+               FontSize="28" 
+               FontAttributes="Bold"
+               HorizontalOptions="Center" 
+               TextColor="#333"/>
+
+        <Entry x:Name="TxtEmail" 
+               Placeholder="Correo Electrónico (ej: admin@logieat.com)" 
+               Keyboard="Email"
+               BackgroundColor="White"
+               TextColor="Black"/>
+
+
+        <Entry x:Name="TxtPassword" 
+               Placeholder="Contraseña" 
+               IsPassword="True"
+               BackgroundColor="White"
+               TextColor="Black"/>
+
+        <!-- 
+             IMPORTANTE: Fíjate en la propiedad Clicked="OnLoginClicked"
+             Si esto no coincide letra por letra con el código C#, no funcionará.
+        -->
+        <Button Text="INICIAR SESIÓN (Probar)" 
+                BackgroundColor="#007bff"
+                TextColor="White"
+                HeightRequest="50"
+                Clicked="OnLoginClicked"/>
+
+        <ActivityIndicator x:Name="LoadingSpinner" 
+                           IsRunning="False" 
+                           IsVisible="False"
+                           Color="#007bff"/>
+
+        <Label x:Name="LblEstado" 
+               Text="Estado: Esperando clic..." 
+               FontSize="12" 
+               TextColor="Gray" 
+               HorizontalOptions="Center"/>
+
+    </VerticalStackLayout>
+</ContentPage>

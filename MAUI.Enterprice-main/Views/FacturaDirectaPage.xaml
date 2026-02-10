@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LogiEat.Mobile.Views.FacturaDirectaPage"
+             Title="Punto de Venta (POS)"
+             BackgroundColor="#f4f4f4">
+
+    <Grid RowDefinitions="Auto, *, Auto">
+
+        <Frame Grid.Row="0" Margin="10" Padding="15" BackgroundColor="White" CornerRadius="10">
+            <VerticalStackLayout Spacing="10">
+
+                <Label Text="Seleccionar Cliente:" FontSize="10" TextColor="Gray"/>
+                <Picker x:Name="PkrClientes" 
+                        Title="-- Buscar Cliente --"
+                        ItemDisplayBinding="{Binding Nombre}"
+                        SelectedIndexChanged="OnClienteSeleccionado"/>
+
+                <Grid ColumnDefinitions="*,*">
+                    <Entry x:Name="TxtRuc" Placeholder="RUC / Cédula" Text="9999999999999" Grid.Column="0" Margin="0,0,5,0"/>
+                    <Entry x:Name="TxtNombre" Placeholder="Nombre Cliente" Text="CONSUMIDOR FINAL" Grid.Column="1"/>
+                </Grid>
+
+                <Picker x:Name="PkrPago" Title="Forma de Pago" SelectedIndex="0">
+                    <Picker.ItemsSource>
+                        <x:Array Type="{x:Type x:String}">
+                            <x:String>💵 Efectivo</x:String>
+                            <x:String>💳 Tarjeta</x:String>
+                            <x:String>🏦 Transferencia</x:String>
+                        </x:Array>
+                    </Picker.ItemsSource>
+                </Picker>
+            </VerticalStackLayout>
+        </Frame>
+
+        <CollectionView x:Name="CvProductos" Grid.Row="1" Margin="10,0">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout Orientation="Vertical" Span="2" HorizontalItemSpacing="10" VerticalItemSpacing="10"/>
+            </CollectionView.ItemsLayout>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Padding="10" CornerRadius="8" BackgroundColor="White">
+                        <Grid RowDefinitions="Auto, Auto, Auto">
+                            <Label Grid.Row="0" Text="{Binding Nombre}" FontAttributes="Bold" LineBreakMode="TailTruncation"/>
+                            <Label Grid.Row="1" Text="{Binding PrecioDisplay}" TextColor="Green"/>
+                            <Button Grid.Row="2" Text="AGREGAR" FontSize="10" HeightRequest="35" Margin="0,5,0,0"
+                                    Clicked="OnAgregarProductoClicked" CommandParameter="{Binding .}"/>
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Frame Grid.Row="2" BackgroundColor="#343a40" CornerRadius="0" Padding="15">
+            <Grid ColumnDefinitions="*, Auto">
+                <VerticalStackLayout VerticalOptions="Center">
+                    <Label Text="TOTAL VENTA" TextColor="Gray" FontSize="10"/>
+                    <Label x:Name="LblTotal" Text="$0.00" TextColor="White" FontAttributes="Bold" FontSize="20"/>
+                    <Label x:Name="LblItemsCount" Text="0 items" TextColor="LightGray" FontSize="12"/>
+                </VerticalStackLayout>
+
+                <Button Grid.Column="1" Text="✅ FACTURAR" BackgroundColor="#28a745" FontAttributes="Bold"
+                        Clicked="OnFacturarClicked" HeightRequest="50" CornerRadius="25"/>
+            </Grid>
+        </Frame>
+    </Grid>
+</ContentPage>

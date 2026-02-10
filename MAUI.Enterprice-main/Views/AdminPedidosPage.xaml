@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LogiEat.Mobile.Views.AdminPedidosPage"
+             Title="Comanda Digital"
+             BackgroundColor="#f2f5f8">
+
+    <Grid RowDefinitions="Auto, *">
+
+        <!-- 1. PESTAÑAS SUPERIORES -->
+        <Frame Grid.Row="0" Padding="5" Margin="10" CornerRadius="10" BackgroundColor="White" HeightRequest="60">
+            <Grid ColumnDefinitions="*,*">
+                <!-- Botón Por Atender (Activo por defecto) -->
+                <Button x:Name="BtnPorAtender" 
+                        Text="🔔 Por Atender" 
+                        BackgroundColor="#6f42c1" 
+                        TextColor="White"
+                        CornerRadius="8"
+                        Clicked="OnTabPorAtenderClicked"/>
+
+                <!-- Botón Procesados -->
+                <Button x:Name="BtnProcesados" 
+                        Text="👨‍🍳 En Cocina" 
+                        BackgroundColor="Transparent" 
+                        TextColor="Gray"
+                        Grid.Column="1"
+                        CornerRadius="8"
+                        Clicked="OnTabProcesadosClicked"/>
+            </Grid>
+        </Frame>
+
+        <!-- 2. LISTA "POR ATENDER" (Visible por defecto) -->
+        <CollectionView x:Name="CvPorAtender" Grid.Row="1" Margin="10,0">
+            <CollectionView.EmptyView>
+                <Label Text="¡Todo al día! No hay pedidos nuevos." HorizontalOptions="Center" VerticalOptions="Center" TextColor="Gray"/>
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Margin="0,0,0,10" Padding="15" CornerRadius="12" BackgroundColor="White" HasShadow="True">
+                        <Grid RowDefinitions="Auto, Auto, Auto" ColumnDefinitions="*, Auto">
+
+                            <!-- Cabecera: ID y Hora -->
+                            <Label Grid.Row="0" Grid.Column="0" Text="{Binding IdPedido, StringFormat='Orden #{0}'}" FontAttributes="Bold" FontSize="16" TextColor="#333"/>
+                            <Label Grid.Row="0" Grid.Column="1" Text="{Binding FechaPedido, StringFormat='{0:HH:mm}'}" TextColor="Gray" FontSize="12"/>
+
+                            <!-- Cuerpo: Resumen y Total -->
+                            <StackLayout Grid.Row="1" Grid.Column="0" Margin="0,5">
+                                <Label Text="Estado: PENDIENTE DE PAGO/APROBACIÓN" FontSize="10" TextColor="#e67e22" FontAttributes="Bold"/>
+                                <Label Text="Ver detalles..." FontSize="12" TextColor="Blue" TextDecorations="Underline">
+                                    <Label.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnVerDetalleTapped" CommandParameter="{Binding .}"/>
+                                    </Label.GestureRecognizers>
+                                </Label>
+                            </StackLayout>
+                            <Label Grid.Row="1" Grid.Column="1" Text="{Binding Total, StringFormat='${0:F2}'}" FontAttributes="Bold" FontSize="18" TextColor="Green" VerticalOptions="Center"/>
+
+                            <!-- Pie: Botones de Acción (Más pequeños y elegantes) -->
+                            <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,10,0,0">
+                                <Button Text="Rechazar" 
+                                        BackgroundColor="#fff0f0" 
+                                        TextColor="#dc3545"
+                                        BorderColor="#dc3545"
+                                        BorderWidth="1"
+                                        HeightRequest="40" 
+                                        Padding="0"
+                                        CornerRadius="5"
+                                        Clicked="OnRechazarClicked"
+                                        CommandParameter="{Binding IdPedido}"/>
+
+                                <Button Grid.Column="1" 
+                                        Text="APROBAR" 
+                                        BackgroundColor="#28a745" 
+                                        TextColor="White"
+                                        HeightRequest="40" 
+                                        Padding="0"
+                                        CornerRadius="5"
+                                        Clicked="OnAprobarClicked"
+                                        CommandParameter="{Binding IdPedido}"/>
+                            </Grid>
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- 3. LISTA "EN COCINA / APROBADOS" (Oculta por defecto) -->
+        <CollectionView x:Name="CvProcesados" Grid.Row="1" Margin="10,0" IsVisible="False">
+            <CollectionView.EmptyView>
+                <Label Text="La cocina está vacía." HorizontalOptions="Center" VerticalOptions="Center" TextColor="Gray"/>
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Margin="0,0,0,10" Padding="15" CornerRadius="12" BackgroundColor="#f8f9fa" BorderColor="#dee2e6">
+                        <Grid RowDefinitions="Auto, Auto" ColumnDefinitions="*, Auto">
+                            <!-- Cabecera -->
+                            <Label Grid.Row="0" Grid.Column="0" Text="{Binding IdPedido, StringFormat='Orden #{0}'}" FontAttributes="Bold" TextColor="#555"/>
+                            <Frame Grid.Row="0" Grid.Column="1" Padding="8,2" CornerRadius="5" BackgroundColor="#d4edda">
+                                <Label Text="{Binding Estado}" TextColor="#155724" FontSize="10" FontAttributes="Bold"/>
+                            </Frame>
+
+                            <!-- Detalles -->
+                            <Label Grid.Row="1" Grid.Column="0" Text="{Binding FechaPedido, StringFormat='Recibido: {0:dd/MM HH:mm}'}" FontSize="12" TextColor="Gray" Margin="0,5,0,0"/>
+                            <Label Grid.Row="1" Grid.Column="1" Text="{Binding Total, StringFormat='${0:F2}'}" FontSize="16" FontAttributes="Bold" TextColor="#333" VerticalOptions="End"/>
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+    </Grid>
+</ContentPage>

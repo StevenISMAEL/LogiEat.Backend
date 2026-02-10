@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="LogiEat.Mobile.Views.MisPedidosPage"
+             Title="Mis Pedidos"
+             BackgroundColor="#f0f0f0">
+
+    <RefreshView IsRefreshing="{Binding IsBusy}" Command="{Binding RefreshCommand}" x:Name="Refresher">
+        <CollectionView x:Name="ListaPedidos" Margin="10">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Margin="0,5" Padding="15" CornerRadius="10" BackgroundColor="White">
+                        <Grid RowDefinitions="Auto, Auto, Auto" ColumnDefinitions="*, Auto">
+
+                            <!-- Fila 1: ID y Estado -->
+                            <Label Grid.Row="0" Grid.Column="0" Text="{Binding IdPedido, StringFormat='Pedido #{0}'}" FontAttributes="Bold" FontSize="16"/>
+                            <Label Grid.Row="0" Grid.Column="1" Text="{Binding Estado}" TextColor="{Binding ColorEstado}" FontAttributes="Bold"/>
+
+                            <!-- Fila 2: Fecha -->
+                            <Label Grid.Row="1" Grid.Column="0" Text="{Binding FechaPedido, StringFormat='{0:dd/MM/yyyy HH:mm}'}" TextColor="Gray" FontSize="12"/>
+
+                            <!-- Fila 3: Total y Detalles -->
+                            <StackLayout Grid.Row="2" Grid.Column="0" Margin="0,10,0,0">
+                                <Label Text="Detalle:" FontSize="12" FontAttributes="Bold"/>
+                                <!-- Lista pequeña de ítems -->
+                                <BindableLayout.ItemsSource>
+                                    <Binding Path="Detalles"/>
+                                </BindableLayout.ItemsSource>
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate>
+                                        <Label Text="{Binding Descripcion}" TextColor="#555" FontSize="12"/>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </StackLayout>
+
+                            <Label Grid.Row="2" Grid.Column="1" Text="{Binding Total, StringFormat='${0:F2}'}" VerticalOptions="End" FontAttributes="Bold" FontSize="18" TextColor="#333"/>
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </RefreshView>
+</ContentPage>
